@@ -1,0 +1,247 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.IO;
+
+namespace Dijkstra_v2._0._1
+{
+    public partial class frmMain : Form
+    {
+        public frmMain()
+        {
+            InitializeComponent();
+        }
+        /* ------------------------  BIẾN  ------------------------------*/
+        string path = "";//chuỗi chứa đường dẫn file
+        const int VC = 1000000;
+        int _sodinh, _socanh, _s, _t, _i, _min;
+        int[] _nhan, _kc, _xet;
+        List<string[]> _dscanh; //Danh sách chứa các cạch
+        int[,] _mt;//Mảng 2 chiều
+        int[] _kq;
+
+
+        /*--------------------------- SỰ KIỆN -----------------------*/
+        private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            string mess = "BẠN CHẮC CHẮN MUỐN THOÁT ỨNG DỤNG";//Chuỗi để xuất màn hình
+            var result = MessageBox.Show(mess, "THOÁT", MessageBoxButtons.YesNo, MessageBoxIcon.Question);//Xuất màn hình 
+            if (result == DialogResult.No)//nếu là No thì ko out
+            {
+                e.Cancel = true;
+            }
+        }
+        private void btnThoat_Click(object sender, EventArgs e)//khi nhấn vào thì thoát
+        {
+            this.Close();
+        }
+        private void btnStart_Click(object sender, EventArgs e)//Nhấn nút start để chọn file
+        {
+            if (path == "")//Đường dẫn trống thì hiện thông báo
+                MessageBox.Show("BẠN CHƯA CHỌN DỮ LIỆU FILE");
+            else//nếu ko thì thực hiện 2 hàm dưới
+            {
+                ThucThi();
+                MoDoThi();
+            }
+
+        }
+        private void btnMoFile_Click(object sender, EventArgs e)//Mở file
+        {
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)//Nếu người dùng nhấn ok thì mở file
+            {
+                path = openFileDialog1.FileName;//đường dẫn sẽ dựa vào file name đã chọn
+                lblPath.Text = path;
+                DocFile();
+            }
+        }
+
+        /* ------------------------  ĐỌC FILE ---------------------------*/
+        void DocFile()
+        {
+            string[] lines;
+            string[] arr;//tạo mảng tên arr (viết tắt của array)
+            if (File.Exists(path))// Kiểm tra xem path có tồn tại ko
+            {
+
+                _dscanh = new List<string[]>();//tạo một list mới
+                lines = File.ReadAllLines(path);//line sẽ chứa file của path
+                arr = lines[0].Split();//áp dụng hàm split thuộc phần tử thứ nhất của mảng lines
+                _sodinh = int.Parse(arr[0]);//ép kiểu sang int và gán cho số đỉnh. Gán giá trị của phần tử thứ nhất của arr
+                _socanh = int.Parse(arr[1]);//ép kiểu sang int và gán cho số đỉnh. Gán giá trị của phần tử thứ hai của arr
+                _s = int.Parse(arr[2]);//same
+                _t = int.Parse(arr[3]);//same
+
+                _nhan = new int[_sodinh + 1];//hàm new là hàm khởi tạo
+                _kc = new int[_sodinh + 1];
+                _xet = new int[_sodinh + 1];
+                _mt = new int[_sodinh + 1, _sodinh + 1];
+
+                for (byte y = 1; y <= _sodinh; y++)
+                    for (byte z = 1; z <= _sodinh; z++)
+                        _mt[y, z] = VC;
+
+                for (byte y = 1; y <= _socanh; y++)
+                {
+                    arr = lines[y].Split();
+                    _dscanh.Add(arr);
+                    int d1 = int.Parse(arr[0]);
+                    int d2 = int.Parse(arr[1]);
+                    int ts = int.Parse(arr[2]);
+                    _mt[d1, d2] = ts;
+                    _mt[d2, d1] = ts;
+                }
+            }
+        }
+
+        void TaoLabel(int width, int height, int x, int y, string text)// Căn chỉnh để tạo nhãn 
+        {
+            Label lbltam = new Label();
+            lbltam.AutoSize = false;
+            lbltam.Width = width;
+            lbltam.Height = height;
+            lbltam.TextAlign = ContentAlignment.MiddleCenter;
+            Point toado = new Point(x, y);
+            lbltam.Location = toado;
+            lbltam.Text = text;
+            pnGiaiThuat.Controls.Add(lbltam);
+        }
+
+        void ThucThi()
+        {
+            pnGiaiThuat.Controls.Clear();
+            Button btnGoc = new Button();//tạo nút mới
+            btnGoc.AutoSize = true;//auto kích cỡ nút
+            btnGoc.Font = this.Font;//chọn font cho nút
+            btnGoc.Text = "Bước / Đỉnh";//đặt tên nút là "Bước / Đỉnh"
+            Point local = new Point(20, 20);//set vị trí nút
+            btnGoc.Location = local;
+            pnGiaiThuat.Controls.Add(btnGoc);
+
+            int X = btnGoc.Location.X;//gán location cho biết X
+            int Y = btnGoc.Location.Y;//same
+            int width = btnGoc.Width;//gán giá trị của hàm width
+            int height = btnGoc.Height;//same
+            string tt = "";
+            int sodinhchon = 0;
+
+            TaoLabel(width, height, X, Y + height, "Bước 1");//chạy lại hàm TaoLabel
+            TaoLabel(width, height, X + width * (_sodinh + 1), Y, "CHỌN");//same
+
+            for (byte y = 1; y <= _sodinh; y++)// Tạo vòng lặp để chạy thuật toán
+            {
+                _kc[y] = _mt[_s, y];
+                _nhan[y] = _s;
+                _xet[y] = 0;
+                if (y == 1) tt = "0";
+                else if (_kc[y] == VC)
+                    tt = "*";
+                else
+                    tt = _kc[y] + "";
+                TaoLabel(width, height, X + width * y, Y, y + "");
+                TaoLabel(width, height, X + width * y, Y + height, "[" + _s + "," + tt + "]");
+            }
+
+            _nhan[_s] = 0;
+            _kc[_s] = 0;
+            _xet[_s] = 1;
+            while (_xet[_t] == 0)
+            {
+                _min = VC;
+                for (byte y = 1; y <= _sodinh; y++)
+                {
+                    if (_xet[y] == 0 && _min > _kc[y])
+                    {
+                        _i = y;
+                        _min = _kc[y];
+                    }
+                }
+                _xet[_i] = 1;
+                TaoLabel(width, height, X + width * (_sodinh + 1), Y + height * (sodinhchon + 1), _i + "");
+                if (_xet[_t] == 0)
+                {
+                    // in ra số bước
+                    TaoLabel(width, height, X, Y + height * (sodinhchon + 2), "Bước " + (sodinhchon + 2));
+                    for (byte y = 1; y <= _sodinh; y++)
+                    {
+                        if (_xet[y] == 0 && (_kc[_i] + _mt[_i, y] < _kc[y]))
+                        {
+                            _kc[y] = _kc[_i] + _mt[_i, y];
+                            _nhan[y] = _i;
+                        }
+                        if (_xet[y] == 0)
+                        {
+                            if (_kc[y] == VC)
+                                tt = "*";
+                            else tt = _kc[y] + "";
+                            TaoLabel(width, height, X + width * y, Y + height * (sodinhchon + 2),
+                                "[" + _nhan[y] + "," + tt + "]");
+                        }
+                        else
+                        {
+                            TaoLabel(width, height, X + width * y, Y + height * (sodinhchon + 2), "-");
+                        }
+                    }
+                }
+                sodinhchon++;
+            }
+            _kq = new int[_sodinh];// Tạo mảng mới
+            int dem = 0;
+            while (_i != _s)// Đếm bước đi 
+            {
+                _kq[dem] = _i;
+                _i = _nhan[_i];
+                dem++;
+            }
+            _kq[dem] = _s;
+            // dán kết quả
+            FlowLayoutPanel flowLayout = new FlowLayoutPanel();
+            flowLayout.FlowDirection = FlowDirection.LeftToRight;
+            flowLayout.Dock = DockStyle.Bottom;
+            flowLayout.WrapContents = true;
+            Button lbl_title = new Button();
+            lbl_title.Text = "KẾT QUẢ SAU KHI THỰC HIỆN THUẬT TOÁN";
+            lbl_title.TextAlign = ContentAlignment.MiddleCenter;
+            lbl_title.AutoSize = false;
+            lbl_title.Width = pnGiaiThuat.Width;
+            flowLayout.Controls.Add(lbl_title);
+
+            for (int i = dem; i >= 0; i--)// Giải thích bước đi
+            {
+                Button lbl_dinh = new Button();
+                lbl_dinh.Text = _kq[i] + "";
+                flowLayout.Controls.Add(lbl_dinh);
+                if (i != 0)
+                {
+                    Button lbl_arrow = new Button();
+                    lbl_arrow.Text = "-->";
+                    flowLayout.Controls.Add(lbl_arrow);
+                }
+                else
+                {
+                    Button lbl_kc = new Button();
+                    lbl_kc.AutoSize = false;
+                    lbl_kc.Text = "Chi Phí : " + _kc[_t];
+                    lbl_kc.Size = new Size(lbl_kc.Text.Length * 10, lbl_dinh.Height);
+                    flowLayout.Controls.Add(lbl_kc);
+                }
+            }
+            this.Controls.Add(flowLayout);
+        }
+
+        void MoDoThi()//Mở đồ thị
+        {
+            DoThi f2 = new DoThi();
+            f2.DuLieu(_dscanh, _kq, _sodinh);
+            f2.Show();
+        }
+
+
+    }
+}
