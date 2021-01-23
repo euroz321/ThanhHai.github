@@ -4,11 +4,16 @@
 #define OUT "DIJKSTRA.OUT"
   
 int main() {
-    FILE *fi = fopen(INP, "r");
+	int n, a, b, i, sum = 0;
+	printf("Nhap diem dau: ");
+	scanf("%d",&a);
+	printf("Nhap diem cuoi: ");
+	scanf("%d",&b);
+	
+    FILE *fi = fopen(INP, "r+");
     FILE *fo = fopen(OUT, "w");
-    int n, a, b, i, sum = 0;
-  
-    fscanf(fi, "%d%d%d", &n, &a, &b);
+    
+    fscanf(fi, "%d", &n);
     int G[n][n];
     int S[n], Len[n], P[n];
   
